@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3dcal - Calculadora de Impressões 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #00ff9c;
+            --primary-dark: #00cc7a;
+            --bg-dark: #121212;
+            --bg-light: #f5f5f5;
+            --panel-dark: #1e1e1e;
+            --panel-light: #ffffff;
+            --border-dark: #333333;
+            --border-light: #cccccc;
+            --text-dark: #ffffff;
+            --text-light: #212121;
+            --text-dim-dark: #cccccc;
+            --text-dim-light: #555555;
+        }
+
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .dark {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        .light {
+            background-color: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        .panel-dark {
+            background-color: var(--panel-dark);
+            border: 1px solid var(--border-dark);
+        }
+
+        .panel-light {
+            background-color: var(--panel-light);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--bg-dark);
+            font-weight: bold;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .text-primary {
+            color: var(--primary);
+        }
+
+        .text-dim {
+            color: var(--text-dim-dark);
+        }
+
+        .light .text-dim {
+            color: var(--text-dim-light);
+        }
+
+        .panel {
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 255, 156, 0.3);
+        }
+
+        .input {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-dark);
+            background-color: var(--panel-dark);
+            color: var(--text-dark);
+            transition: border-color 0.3s ease;
+        }
+
+        .light .input {
+            border-color: var(--border-light);
+            background-color: var(--panel-light);
+            color: var(--text-light);
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .price-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-card {
+            transition: all 0.3s ease;
+        }
+
+        .result-card:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="dark min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="text-center mb-8 fade-in">
+            <h1 class="text-4xl font-bold text-primary mb-2">3dcal</h1>
+            <p class="text-dim">Calculadora de Impressões 3D</p>
+            
+            <!-- Theme Toggle -->
+            <div class="flex justify-center gap-2 mt-4">
+                <button onclick="setTheme('dark')" class="btn panel-dark text-white" id="dark-btn">
+                    <i data-lucide="moon" class="w-4 h-4"></i> Escuro
+                </button>
+                <button onclick="setTheme('light')" class="btn panel-light text-gray-800" id="light-btn">
+                    <i data-lucide="sun" class="w-4 h-4"></i> Claro
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Panel - Inputs -->
+            <div class="lg:col-span-1">
+                <div class="panel panel-dark fade-in">
+                    <h2 class="text-xl font-bold text-primary mb-4">
+                        <i data-lucide="settings" class="w-5 h-5 inline mr-2"></i>Configurações
+                    </h2>
+                    
+                    <!-- Printer Selection -->
+                    <div class="mb-4">
+                        <label class="block text-dim text-sm font-medium mb-2">Impressora</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            {% for printer_key, printer in config.printers.items() %}
+                            <button onclick="selectPrinter('{{ printer_key }}')" 
+                                    class="btn panel-dark text-white printer-btn" 
+                                    id="btn-{{ printer_key }}">
+                                {{ printer.name }} ({{ printer.power_kw }} kW)
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Input Fields -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-dim text-sm font-medium mb-2">Peso (g)</label>
+                            <input type="number" id="weight" class="input w-full" placeholder="0.0" step="0.1">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-dim text-sm font-medium mb-2">Filamento (R$/kg)</label>
+                            <input type="number" id="filament-price" class="input w-full" placeholder="0.0" step="0.01">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-dim text-sm font-medium mb-2">Tempo (h)</label>
+                            <input type="number" id="time" class="input w-full" placeholder="0.0" step="0.1">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-dim text-sm font-medium mb-2">Lucro (%)</label>
+                            <input type="number" id="profit" class="input w-full" placeholder="0.0" step="0.1">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-dim text-sm font-medium mb-2">Quantidade</label>
+                            <input type="number" id="quantity" class="input w-full" placeholder="1" min="1" value="1">
+                        </div>
+                    </div>
+
+                    <!-- Calculate Button -->
+                    <button onclick="calculate()" class="btn btn-primary w-full mt-6 text-lg">
+                        <i data-lucide="calculator" class="w-5 h-5 inline mr-2"></i>Calcular
+                    </button>
+                </div>
+            </div>
+
+            <!-- Center Panel - Results -->
+            <div class="lg:col-span-1">
+                <div class="panel panel-dark fade-in">
+                    <h2 class="text-xl font-bold text-primary mb-4">
+                        <i data-lucide="trending-up" class="w-5 h-5 inline mr-2"></i>Resultados
+                    </h2>
+                    
+                    <!-- Price Display -->
+                    <div class="price-display panel-dark text-primary" id="price-display">
+                        R$ 0,00
+                    </div>
+                    
+                    <!-- Results Grid -->
+                    <div class="grid grid-cols-1 gap-3" id="results-grid">
+                        <div class="result-card panel-dark p-3">
+                            <div class="text-dim text-sm">Custo Total</div>
+                            <div class="font-bold" id="total-cost">R$ 0,00</div>
+                        </div>
+                        
+                        <div class="result-card panel-dark p-3">
+                            <div class="text-dim text-sm">Valor por Peça</div>
+                            <div class="font-bold" id="price-per-piece">R$ 0,00</div>
+                        </div>
+                        
+                        <div class="result-card panel-dark p-3">
+                            <div class="text-dim text-sm">Lucro</div>
+                            <div class="font-bold text-primary" id="profit-amount">R$ 0,00</div>
+                        </div>
+                        
+                        <div class="result-card panel-dark p-3">
+                            <div class="text-dim text-sm">Margem</div>
+                            <div class="font-bold" id="profit-percentage">0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Copy Button -->
+                    <button onclick="copyPrice()" class="btn panel-dark text-white w-full mt-4" id="copy-btn" disabled>
+                        <i data-lucide="copy" class="w-4 h-4 inline mr-2"></i>Copiar Preço
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel - Cost Breakdown -->
+            <div class="lg:col-span-1">
+                <div class="panel panel-dark fade-in">
+                    <h2 class="text-xl font-bold text-primary mb-4">
+                        <i data-lucide="pie-chart" class="w-5 h-5 inline mr-2"></i>Detalhes do Custo
+                    </h2>
+                    
+                    <div class="space-y-3" id="cost-breakdown">
+                        <div class="flex justify-between">
+                            <span class="text-dim">Material</span>
+                            <span id="cost-material">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-dim">Energia</span>
+                            <span id="cost-energy">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-dim">Desgaste</span>
+                            <span id="cost-wear">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-dim">Falhas</span>
+                            <span id="cost-failure">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-dim">Manutenção</span>
+                            <span id="cost-maintenance">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-dim">Depreciação</span>
+                            <span id="cost-depreciation">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-dim">ROI</span>
+                            <span id="cost-roi">R$ 0,00</span>
+                        </div>
+                        <div class="border-t pt-3 mt-3">
+                            <div class="flex justify-between font-bold">
+                                <span>Total por Peça</span>
+                                <span id="cost-total-per-piece">R$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        let selectedPrinter = 'A1';
+        let currentTheme = 'dark';
+        let lastResult = null;
+
+        // Theme management
+        function setTheme(theme) {
+            currentTheme = theme;
+            document.body.className = theme;
+            
+            // Update button styles
+            const darkBtn = document.getElementById('dark-btn');
+            const lightBtn = document.getElementById('light-btn');
+            
+            if (theme === 'dark') {
+                darkBtn.className = 'btn panel-dark text-white';
+                lightBtn.className = 'btn panel-light text-gray-800';
+                
+                // Update panels
+                document.querySelectorAll('.panel').forEach(panel => {
+                    panel.className = panel.className.replace('panel-light', 'panel-dark');
+                });
+                
+                // Update inputs
+                document.querySelectorAll('.input').forEach(input => {
+                    input.classList.remove('border-gray-300', 'bg-white', 'text-gray-900');
+                    input.classList.add('border-gray-600', 'bg-gray-800', 'text-white');
+                });
+            } else {
+                darkBtn.className = 'btn panel-dark text-gray-800';
+                lightBtn.className = 'btn panel-light text-white';
+                
+                // Update panels
+                document.querySelectorAll('.panel').forEach(panel => {
+                    panel.className = panel.className.replace('panel-dark', 'panel-light');
+                });
+                
+                // Update inputs
+                document.querySelectorAll('.input').forEach(input => {
+                    input.classList.remove('border-gray-600', 'bg-gray-800', 'text-white');
+                    input.classList.add('border-gray-300', 'bg-white', 'text-gray-900');
+                });
+            }
+            
+            // Save preference
+            localStorage.setItem('theme', theme);
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        setTheme(savedTheme);
+
+        // Printer selection
+        function selectPrinter(printer) {
+            selectedPrinter = printer;
+            
+            // Update button styles
+            document.querySelectorAll('.printer-btn').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('panel-dark', 'text-white');
+            });
+            
+            const selectedBtn = document.getElementById(`btn-${printer}`);
+            selectedBtn.classList.remove('panel-dark', 'text-white');
+            selectedBtn.classList.add('btn-primary');
+        }
+
+        // Initialize printer selection
+        selectPrinter(selectedPrinter);
+
+        // Format currency
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        // Calculate function
+        async function calculate() {
+            const weight = parseFloat(document.getElementById('weight').value) || 0;
+            const filamentPrice = parseFloat(document.getElementById('filament-price').value) || 0;
+            const time = parseFloat(document.getElementById('time').value) || 0;
+            const profit = parseFloat(document.getElementById('profit').value) || 0;
+            const quantity = parseInt(document.getElementById('quantity').value) || 1;
+
+            try {
+                const response = await fetch('/api/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        printer: selectedPrinter,
+                        weight,
+                        filament_price: filamentPrice,
+                        time,
+                        profit,
+                        quantity
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    alert('Erro: ' + result.error);
+                    return;
+                }
+
+                lastResult = result;
+                updateUI(result);
+                
+                // Enable copy button
+                document.getElementById('copy-btn').disabled = false;
+                
+            } catch (error) {
+                alert('Erro ao calcular: ' + error.message);
+            }
+        }
+
+        // Update UI with results
+        function updateUI(result) {
+            // Update main price display
+            document.getElementById('price-display').textContent = formatCurrency(result.results.sale_price);
+            
+            // Update results grid
+            document.getElementById('total-cost').textContent = formatCurrency(result.results.total_cost);
+            document.getElementById('price-per-piece').textContent = formatCurrency(result.results.price_per_piece);
+            document.getElementById('profit-amount').textContent = formatCurrency(result.results.profit_amount);
+            document.getElementById('profit-percentage').textContent = result.results.profit_percentage + '%';
+            
+            // Update cost breakdown
+            document.getElementById('cost-material').textContent = formatCurrency(result.costs.material);
+            document.getElementById('cost-energy').textContent = formatCurrency(result.costs.energy);
+            document.getElementById('cost-wear').textContent = formatCurrency(result.costs.wear);
+            document.getElementById('cost-failure').textContent = formatCurrency(result.costs.failure);
+            document.getElementById('cost-maintenance').textContent = formatCurrency(result.costs.maintenance);
+            document.getElementById('cost-depreciation').textContent = formatCurrency(result.costs.depreciation);
+            document.getElementById('cost-roi').textContent = formatCurrency(result.costs.roi);
+            document.getElementById('cost-total-per-piece').textContent = formatCurrency(result.costs.total_per_piece);
+        }
+
+        // Copy price function
+        function copyPrice() {
+            if (!lastResult) return;
+            
+            const priceText = formatCurrency(lastResult.results.sale_price);
+            navigator.clipboard.writeText(priceText).then(() => {
+                const btn = document.getElementById('copy-btn');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i data-lucide="check" class="w-4 h-4 inline mr-2"></i>Copiado!';
+                lucide.createIcons();
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    lucide.createIcons();
+                }, 2000);
+            });
+        }
+
+        // Add enter key support
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    calculate();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
